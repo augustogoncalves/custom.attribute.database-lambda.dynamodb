@@ -1,7 +1,7 @@
 # custom.attribute.database-lambda.dynamodb
 
 ![Platforms](https://img.shields.io/badge/platform-Windows-lightgray.svg)
-![.NET](https://img.shields.io/badge/.NET Core-2.0-blue.svg)
+![.NET](https://img.shields.io/badge/.NET-Core-2.0-blue.svg)
 [![License](http://img.shields.io/:license-mit-blue.svg)](http://opensource.org/licenses/MIT)
 
 [![Model-Derivative](https://img.shields.io/badge/Model%20Derivative-v2-green.svg)](http://developer.autodesk.com/)

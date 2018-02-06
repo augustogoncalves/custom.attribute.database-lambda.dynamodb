@@ -51,30 +51,6 @@ namespace CustomAttributes.Database
     }
 
     /// <summary>
-    /// Removes the "urn:" prefix of all Forge URNs
-    /// </summary>
-    /// <param name="urn"></param>
-    /// <returns></returns>
-    private static string AdjustURN(string urn)
-    {
-      // from https://stackoverflow.com/a/33113820
-      urn = urn.Replace('-', '+'); // 62nd char of encoding
-      urn = urn.Replace('_', '/'); // 63rd char of encoding
-      switch (urn.Length % 4) // Pad with trailing '='s
-      {
-        case 0: break; // No pad chars in this case
-        case 2: urn += "=="; break; // Two pad chars
-        case 3: urn += "="; break; // One pad char
-        default:
-          throw new System.Exception("Illegal base64url string!");
-      }
-
-      string decodedURN = Encoding.UTF8.GetString(Convert.FromBase64String(urn));
-      if (decodedURN.IndexOf("urn:") == -1) return urn;
-      return Convert.ToBase64String(Encoding.UTF8.GetBytes(decodedURN.Remove(0, 4)));
-    }
-
-    /// <summary>
     /// Save attribute information. 
     /// </summary>
     /// <param name="attributes">Must have, at least, the URN property</param>
@@ -86,8 +62,6 @@ namespace CustomAttributes.Database
 
       try
       {
-        attributes.URN = AdjustURN(attributes.URN);
-
         await DDBContext.SaveAsync<Model.Attributes>(attributes);
         return attributes;
       }
@@ -109,8 +83,6 @@ namespace CustomAttributes.Database
       ListTablesResponse existingTables = await client.ListTablesAsync();
       if (!existingTables.TableNames.Contains(TABLE_NAME)) await SetupTable(client, TABLE_NAME, "URN");
 
-      urn = AdjustURN(urn);
-
       try
       {
         return await DDBContext.LoadAsync<Model.Attributes>(urn);
@@ -123,7 +95,8 @@ namespace CustomAttributes.Database
     }
 
     /// <summary>
-    /// Create table if it doesn't exist. Sample code from https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LowLevelDotNetTableOperationsExample.html
+    /// Create table if it doesn't exist. 
+    /// Sample code from https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LowLevelDotNetTableOperationsExample.html
     /// </summary>
     /// <param name="client"></param>
     /// <param name="tabelName"></param>

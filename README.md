@@ -20,7 +20,7 @@ The server side was implemented in .NET and exposes 3 endpoints:
   ```JSON
   {
       "urn":"dXJuOmFkc2WXlUUXNPd1E",
-      "attribute":"some information"
+      "data": {"key": "any valid json"}
   } 
   ```
      
@@ -29,7 +29,7 @@ The server side was implemented in .NET and exposes 3 endpoints:
   ```JSON
   {
       "urn":"dXJuOmFkc2WXlUUXNPd1E",
-      "attribute":"updated information"
+      "data": {"key": "any valid json"}
   } 
   ```
      

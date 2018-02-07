@@ -18,7 +18,6 @@
 
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace CustomAttributes.Controllers
@@ -27,27 +26,32 @@ namespace CustomAttributes.Controllers
   public class AttributesController : Security
   {
     [HttpGet("{urn}")]
-    public async Task<Model.Attributes> Get(string urn)
+    public async Task<JsonResult> Get(string urn)
     {
-      if (!await IsAuthorized(urn)) return null;
+      if (!await IsAuthorized(urn)) return new JsonResult(new { Error = "Invalid or expired access token" });
 
       // start the database
       Database.Attributes attributesDb = new Database.Attributes();
 
       // return the attributes
-      return await attributesDb.GetAttributes(urn);
+      string attributes = await attributesDb.GetAttributes(urn);
+      var res = new { URN = urn, Data = Newtonsoft.Json.JsonConvert.DeserializeObject(attributes) };
+
+      return new JsonResult(res);
     }
 
     [HttpPost]
-    public async Task Post([FromBody]Model.Attributes attributes)
+    public async Task Post([FromBody]Model.Attributes newAttributes)
     {
-      if (!await IsAuthorized(attributes.URN)) return;
-      
+      if (!isValidInput(newAttributes)) return;
+      if (!isValidJsonString(newAttributes.Data.ToString())) return;
+      if (!await IsAuthorized(newAttributes.URN)) return;
+
       // start the database
       Database.Attributes attributesDb = new Database.Attributes();
 
       // this attribute is already there?
-      Model.Attributes existingAttributes = await attributesDb.GetAttributes(attributes.URN);
+      string existingAttributes = await attributesDb.GetAttributes(newAttributes.URN);
       if (existingAttributes != null)
       {
         // ops, already there
@@ -56,17 +60,21 @@ namespace CustomAttributes.Controllers
       }
 
       // save
-      await attributesDb.SaveAttributes(attributes);
+      await attributesDb.SaveAttributes(newAttributes);
     }
 
     [HttpPut("{urn}")]
-    public async void Put(string urn, [FromBody]Model.Attributes updatedAttributes)
+    public async Task Put(string urn, [FromBody]Model.Attributes updatedAttributes)
     {
+      if (!isValidInput(updatedAttributes)) return;
+      if (!isValidJsonString(updatedAttributes.Data.ToString())) return;
+
       if (!urn.Equals(updatedAttributes.URN))
       {
         base.Response.StatusCode = (int)HttpStatusCode.BadRequest;
         return;
       }
+
 
       if (!await IsAuthorized(urn)) return;
 
@@ -88,6 +96,31 @@ namespace CustomAttributes.Controllers
       */
 
       await attributesDb.SaveAttributes(updatedAttributes);
+    }
+
+    private bool isValidInput(Model.Attributes input)
+    {
+      if (input == null || string.IsNullOrWhiteSpace(input.URN)
+        || input.Data == null || string.IsNullOrWhiteSpace(input.Data.ToString()))
+      {
+        base.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+        return false;
+      }
+      return true;
+    }
+
+    private bool isValidJsonString(string jsonInput)
+    {
+      try
+      {
+        object jsonData = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonInput);
+        return true;
+      }
+      catch
+      {
+        base.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+        return false;
+      }
     }
   }
 }

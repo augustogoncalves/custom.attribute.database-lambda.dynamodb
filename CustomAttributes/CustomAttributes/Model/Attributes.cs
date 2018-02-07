@@ -23,12 +23,11 @@ namespace CustomAttributes.Model
     /// <summary>
     /// URN used on Forge (remove urn: preffix)
     /// </summary>
-    [Amazon.DynamoDBv2.DataModel.DynamoDBHashKey]
     public string URN { get; set; }
-    
+
     /// <summary>
     /// Our custom data
     /// </summary>
-    public string Attribute { get; set; }
+    public object Data { get; set; }
   }
 }

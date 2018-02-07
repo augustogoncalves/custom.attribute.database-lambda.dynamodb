@@ -19,10 +19,10 @@
 using Amazon;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
+using Amazon.DynamoDBv2.DocumentModel;
 using Amazon.DynamoDBv2.Model;
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace CustomAttributes.Database
@@ -31,7 +31,6 @@ namespace CustomAttributes.Database
   {
     private const string TABLE_NAME = "AttributesTable";
     private static AmazonDynamoDBClient client;
-    private DynamoDBContext DDBContext { get; set; }
 
     /// <summary>
     /// Database handler for Attributes
@@ -44,10 +43,6 @@ namespace CustomAttributes.Database
         if (System.Diagnostics.Debugger.IsAttached) clientConfig.ServiceURL = "http://localhost:8000"; // localhost testing only
         client = new AmazonDynamoDBClient(clientConfig);
       }
-
-      AWSConfigsDynamoDB.Context.TypeMappings[typeof(Model.Attributes)] = new Amazon.Util.TypeMapping(typeof(Model.Attributes), TABLE_NAME);
-      DynamoDBContextConfig config = new DynamoDBContextConfig { Conversion = DynamoDBEntryConversion.V2 };
-      DDBContext = new DynamoDBContext(client, config);
     }
 
     /// <summary>
@@ -55,21 +50,31 @@ namespace CustomAttributes.Database
     /// </summary>
     /// <param name="attributes">Must have, at least, the URN property</param>
     /// <returns></returns>
-    public async Task<Model.Attributes> SaveAttributes(Model.Attributes attributes)
+    public async Task<bool> SaveAttributes(Model.Attributes attributes)
     {
       ListTablesResponse existingTables = await client.ListTablesAsync();
       if (!existingTables.TableNames.Contains(TABLE_NAME)) await SetupTable(client, TABLE_NAME, "URN");
 
       try
       {
-        await DDBContext.SaveAsync<Model.Attributes>(attributes);
-        return attributes;
+        // create a generic dictionary
+        Dictionary<string, DynamoDBEntry> dic = new Dictionary<string, DynamoDBEntry>();
+        dic.Add("URN", attributes.URN);
+        dic.Add("Data", attributes.Data.ToString());
+
+        // save as a DynamoDB document
+        Table table = Table.LoadTable(client, TABLE_NAME);
+        Document document = new Document(dic);
+        await table.PutItemAsync(document);
+
+        // all good!
+        return true;
       }
       catch (Exception ex)
       {
         Console.WriteLine("Error saving attributes: " + ex.Message);
       }
-      return null;
+      return false;
     }
 
 
@@ -78,14 +83,16 @@ namespace CustomAttributes.Database
     /// </summary>
     /// <param name="urn"></param>
     /// <returns></returns>
-    public async Task<Model.Attributes> GetAttributes(string urn)
+    public async Task<string> GetAttributes(string urn)
     {
       ListTablesResponse existingTables = await client.ListTablesAsync();
       if (!existingTables.TableNames.Contains(TABLE_NAME)) await SetupTable(client, TABLE_NAME, "URN");
-
+          
       try
       {
-        return await DDBContext.LoadAsync<Model.Attributes>(urn);
+        Table table = Table.LoadTable(client, TABLE_NAME);
+        Document document = await table.GetItemAsync(urn);
+        return document["Data"].AsString(); // will be parsed later
       }
       catch (Exception ex)
       {
